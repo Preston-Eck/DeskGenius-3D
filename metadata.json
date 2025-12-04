@@ -1,0 +1,7 @@
+{
+  "name": "DeskGenius 3D",
+  "description": "A custom desk design tool with AI-powered assistance, room augmentation, and automated build guide generation.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
