@@ -1,4 +1,5 @@
-import React, { useMemo } from 'react';
+
+import React, { useLayoutEffect, useMemo } from 'react';
 import { ProjectConfig } from '../types';
 import { Box, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
@@ -14,9 +15,10 @@ const WOOD_TEXTURE_URL = "https://raw.githubusercontent.com/pmndrs/drei-assets/4
 const WoodMaterial: React.FC<{ color: string }> = ({ color }) => {
   const texture = useTexture(WOOD_TEXTURE_URL);
   
-  useMemo(() => {
+  useLayoutEffect(() => {
     texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
     texture.repeat.set(2, 2);
+    texture.needsUpdate = true;
   }, [texture]);
 
   return (
@@ -42,7 +44,7 @@ const CabinetUnit: React.FC<{
   position: [number, number, number]; 
   size: [number, number, number]; 
   type: string; 
-  materialType: string;
+  materialType: string; 
   materialColor: string; 
 }> = ({ position, size, type, materialType, materialColor }) => {
   const [w, h, d] = size;

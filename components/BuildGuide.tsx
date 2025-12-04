@@ -1,11 +1,42 @@
+
 import React, { useEffect, useState } from 'react';
-import { ProjectConfig, BuildGuideData } from '../types';
+import { ProjectConfig, BuildGuideData, CutListItem } from '../types';
 import { generateBuildGuide } from '../services/geminiService';
 import { ClipboardList, Hammer, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
 
 interface BuildGuideProps {
   deskConfig: ProjectConfig;
 }
+
+const PartDiagram: React.FC<{ part: CutListItem }> = ({ part }) => {
+  // Calculate relative scaling for the SVG
+  const maxDim = Math.max(part.length, part.width);
+  const scale = 100 / maxDim; // Fit into 100px box logic
+  const svgW = part.width * scale;
+  const svgH = part.length * scale;
+  
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <div className="w-24 h-24 bg-blue-50 border border-blue-200 rounded flex items-center justify-center relative p-2">
+        <svg width="100%" height="100%" viewBox="0 0 100 100" className="overflow-visible">
+          <rect 
+            x={(100 - svgW)/2} 
+            y={(100 - svgH)/2} 
+            width={svgW} 
+            height={svgH} 
+            fill="#93c5fd" 
+            stroke="#1e3a8a" 
+            strokeWidth="1"
+          />
+          {/* Dimension Labels */}
+          <text x="50" y={(100 - svgH)/2 - 5} textAnchor="middle" fontSize="10" fill="#1e40af">{part.width}"</text>
+          <text x={(100 + svgW)/2 + 5} y="50" textAnchor="start" fontSize="10" fill="#1e40af" transform={`rotate(90, ${(100 + svgW)/2 + 5}, 50)`}>{part.length}"</text>
+        </svg>
+      </div>
+      <span className="text-xs font-medium text-gray-600">{part.thickness}" Thick</span>
+    </div>
+  );
+};
 
 const BuildGuide: React.FC<BuildGuideProps> = ({ deskConfig }) => {
   const [data, setData] = useState<BuildGuideData | null>(null);
@@ -57,52 +88,43 @@ const BuildGuide: React.FC<BuildGuideProps> = ({ deskConfig }) => {
       <div className="mb-8 text-center">
         <h1 className="text-3xl font-bold text-gray-900">Cabinetry Build Plan</h1>
         <p className="text-gray-600 mt-2">
-          {deskConfig.spaceWidth}" Built-in Unit | {deskConfig.material}
+          {deskConfig.room.width}" Built-in Unit | {deskConfig.material}
         </p>
       </div>
 
       <div className="grid md:grid-cols-2 gap-8 mb-8">
         {/* Cut List */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden md:col-span-2">
           <div className="bg-brand-50 p-4 border-b border-brand-100 flex items-center gap-2">
             <ClipboardList className="w-5 h-5 text-brand-700" />
-            <h2 className="font-semibold text-brand-900">Cut List</h2>
+            <h2 className="font-semibold text-brand-900">Cut List & Diagrams</h2>
           </div>
-          <div className="p-4 overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="text-xs text-gray-500 uppercase bg-gray-50">
-                <tr>
-                  <th className="px-2 py-2">Part</th>
-                  <th className="px-2 py-2">Dims</th>
-                  <th className="px-2 py-2">Qty</th>
-                  <th className="px-2 py-2">Mat</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.cutList.map((item, idx) => (
-                  <tr key={idx} className="border-b last:border-0">
-                    <td className="px-2 py-3 font-medium text-gray-900">{item.partName}</td>
-                    <td className="px-2 py-3 text-gray-600 whitespace-nowrap">{item.dimensions}</td>
-                    <td className="px-2 py-3 text-gray-600">{item.quantity}</td>
-                    <td className="px-2 py-3 text-gray-600 truncate max-w-[100px]">{item.material}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="p-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
+              {data.cutList.map((item, idx) => (
+                <div key={idx} className="flex flex-col items-center p-4 border border-gray-100 rounded-lg hover:shadow-md transition-shadow bg-white">
+                   <h3 className="font-bold text-gray-800 text-sm mb-2">{item.partName}</h3>
+                   <PartDiagram part={item} />
+                   <div className="mt-3 text-center">
+                     <div className="text-xs text-gray-500">{item.quantity}x {item.material}</div>
+                     <div className="text-xs font-mono text-gray-700 mt-1">{item.length}" x {item.width}"</div>
+                   </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
         {/* Tools */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden h-fit">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden h-fit md:col-span-2">
           <div className="bg-orange-50 p-4 border-b border-orange-100 flex items-center gap-2">
             <Hammer className="w-5 h-5 text-orange-700" />
             <h2 className="font-semibold text-orange-900">Tools Required</h2>
           </div>
           <div className="p-4">
-             <ul className="grid grid-cols-2 gap-2">
+             <ul className="flex flex-wrap gap-2">
                {data.toolsRequired.map((tool, idx) => (
-                 <li key={idx} className="flex items-center gap-2 text-sm text-gray-700">
-                   <span className="w-1.5 h-1.5 bg-orange-400 rounded-full" />
+                 <li key={idx} className="flex items-center gap-2 px-3 py-1 bg-orange-50 text-orange-800 text-sm rounded-full border border-orange-100">
                    {tool}
                  </li>
                ))}

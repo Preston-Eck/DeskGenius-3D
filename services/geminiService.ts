@@ -94,6 +94,7 @@ export const generateBuildGuide = async (config: ProjectConfig): Promise<BuildGu
     Act as a master cabinet maker.
     Provide a detailed build plan.
     1. A simplified cut list (focus on carcass parts: sides, bottoms, tops, shelves).
+       Provide length, width, and thickness for each part in inches.
     2. Tools required (e.g., Kreg Jig, Table Saw).
     3. Step-by-step assembly instructions for building the carcasses, installing drawer slides, and scribing the countertop to the wall.
     
@@ -109,7 +110,9 @@ export const generateBuildGuide = async (config: ProjectConfig): Promise<BuildGu
           type: Type.OBJECT,
           properties: {
             partName: { type: Type.STRING },
-            dimensions: { type: Type.STRING },
+            length: { type: Type.NUMBER },
+            width: { type: Type.NUMBER },
+            thickness: { type: Type.NUMBER },
             quantity: { type: Type.NUMBER },
             material: { type: Type.STRING },
           }

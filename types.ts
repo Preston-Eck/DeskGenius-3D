@@ -66,7 +66,9 @@ export interface BuildStep {
 
 export interface CutListItem {
   partName: string;
-  dimensions: string;
+  length: number; // inches
+  width: number;  // inches
+  thickness: number; // inches (e.g., 0.75)
   quantity: number;
   material: string;
 }

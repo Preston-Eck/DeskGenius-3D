@@ -1,4 +1,5 @@
-import React, { Suspense, useState, useRef, useEffect } from 'react';
+
+import React, { Suspense, useState, useRef, useEffect, Component } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, TransformControls, ContactShadows, Box, Cylinder, Environment, useTexture } from '@react-three/drei';
 import DeskModel from './DeskModel';
@@ -12,7 +13,7 @@ interface DesignCanvasProps {
 
 interface ErrorBoundaryProps {
   fallback: React.ReactNode;
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 interface ErrorBoundaryState {
@@ -20,14 +21,13 @@ interface ErrorBoundaryState {
 }
 
 // Simple error boundary to catch Suspense/Texture errors
-class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  constructor(props: ErrorBoundaryProps) {
-    super(props);
-    this.state = { hasError: false };
-  }
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  state: ErrorBoundaryState = { hasError: false };
+  
   static getDerivedStateFromError() {
     return { hasError: true };
   }
+  
   render() {
     if (this.state.hasError) return this.props.fallback;
     return this.props.children;
