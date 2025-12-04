@@ -1,4 +1,3 @@
-
 import React, { useMemo } from 'react';
 import { ProjectConfig } from '../types';
 import { Box, useTexture } from '@react-three/drei';
@@ -9,21 +8,17 @@ interface DeskModelProps {
   opacity?: number;
 }
 
-const WOOD_TEXTURE_URL = "https://images.unsplash.com/photo-1543486978-3a4f43329186?ixlib=rb-1.2.1&auto=format&fit=crop&w=1024&q=80";
+// A more reliable, CORS-friendly texture URL
+const WOOD_TEXTURE_URL = "https://raw.githubusercontent.com/pmndrs/drei-assets/456060a26bbeb8fdf9d32ff9ef96ecc4306d2ef1/group/wood_texture_arrow_front.jpg";
 
-const Material: React.FC<{ type: string, color: string }> = ({ type, color }) => {
+const WoodMaterial: React.FC<{ color: string }> = ({ color }) => {
   const texture = useTexture(WOOD_TEXTURE_URL);
   
-  // Clone texture to avoid shared state issues if used differently, though useTexture caches.
-  // For R3F, modifying texture props inside component is safe if memoized or in effect,
-  // but for simple cases, setting wrap is standard.
-  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  useMemo(() => {
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(2, 2);
+  }, [texture]);
 
-  if (type === 'Painted MDF') {
-      return <meshStandardMaterial color={color} roughness={0.3} metalness={0.1} />;
-  }
-  
-  // Wood Materials
   return (
     <meshStandardMaterial 
       map={texture} 
@@ -33,6 +28,14 @@ const Material: React.FC<{ type: string, color: string }> = ({ type, color }) =>
       envMapIntensity={0.8}
     />
   );
+};
+
+const Material: React.FC<{ type: string, color: string }> = ({ type, color }) => {
+  if (type === 'Painted MDF') {
+      return <meshStandardMaterial color={color} roughness={0.3} metalness={0.1} />;
+  }
+  
+  return <WoodMaterial color={color} />;
 };
 
 const CabinetUnit: React.FC<{ 

@@ -1,4 +1,3 @@
-
 import React, { Suspense, useState, useRef, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, TransformControls, ContactShadows, Box, Cylinder, Environment, useTexture } from '@react-three/drei';
@@ -11,6 +10,30 @@ interface DesignCanvasProps {
   setDeskConfig: React.Dispatch<React.SetStateAction<ProjectConfig>>;
 }
 
+interface ErrorBoundaryProps {
+  fallback: React.ReactNode;
+  children: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+}
+
+// Simple error boundary to catch Suspense/Texture errors
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  render() {
+    if (this.state.hasError) return this.props.fallback;
+    return this.props.children;
+  }
+}
+
 // --- Textures ---
 const FLOOR_TEXTURES = {
   wood: "https://images.unsplash.com/photo-1516541196182-6bdb0516ed27?ixlib=rb-1.2.1&auto=format&fit=crop&w=1024&q=80",
@@ -19,6 +42,7 @@ const FLOOR_TEXTURES = {
 };
 
 const Floor: React.FC<{ room: ProjectConfig['room'] }> = ({ room }) => {
+  // Use a fallback if texture fails to load (caught by ErrorBoundary in parent, or we can handle here)
   const textureUrl = FLOOR_TEXTURES[room.floorType] || FLOOR_TEXTURES.wood;
   const texture = useTexture(textureUrl);
   
@@ -126,10 +150,12 @@ const DecorativeObject: React.FC<{
   );
 };
 
-
-const DesignCanvas: React.FC<DesignCanvasProps> = ({ deskConfig, setDeskConfig }) => {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-
+const SceneContent: React.FC<{ 
+  deskConfig: ProjectConfig, 
+  setDeskConfig: React.Dispatch<React.SetStateAction<ProjectConfig>>,
+  selectedId: string | null,
+  setSelectedId: (id: string | null) => void
+}> = ({ deskConfig, setDeskConfig, selectedId, setSelectedId }) => {
   const { room } = deskConfig;
 
   const updateObject = (id: string, pos: [number, number, number], rot: [number, number, number]) => {
@@ -140,71 +166,89 @@ const DesignCanvas: React.FC<DesignCanvasProps> = ({ deskConfig, setDeskConfig }
   };
 
   return (
+    <>
+      {/* Lighting & Environment */}
+      <Environment preset="apartment" background={false} blur={0.6} />
+      
+      <ambientLight intensity={0.4} />
+      <pointLight position={[0, room.height - 20, 20]} intensity={0.5} castShadow />
+      <directionalLight 
+        position={[50, 50, 50]} 
+        intensity={0.6} 
+        castShadow 
+        shadow-mapSize={[2048, 2048]} 
+        shadow-bias={-0.0001}
+      />
+      
+      {/* Room Shell */}
+      <group position={[0, -room.height/2 + 20, 0]}> 
+         <Floor room={room} />
+         
+         {/* Back Wall */}
+         <Box args={[room.width, room.height, 1]} position={[0, room.height/2, -room.depth/2]} receiveShadow castShadow>
+            <meshStandardMaterial color={room.wallColor} />
+         </Box>
+
+         {/* Side Walls (Visual Only) */}
+         {room.sideWalls[0] && (
+           <Box args={[1, room.height, room.depth]} position={[-room.width/2, room.height/2, 0]} receiveShadow>
+              <meshStandardMaterial color={room.wallColor} />
+           </Box>
+         )}
+         
+         {room.sideWalls[1] && (
+           <Box args={[1, room.height, room.depth]} position={[room.width/2, room.height/2, 0]} receiveShadow>
+              <meshStandardMaterial color={room.wallColor} />
+           </Box>
+         )}
+         
+         {/* Ceiling Hint */}
+         <Box args={[room.width, 1, room.depth]} position={[0, room.height, 0]}>
+            <meshStandardMaterial color="#fff" opacity={0.1} transparent />
+         </Box>
+
+         {/* The Desk */}
+         <group position={[0, 0, -room.depth/2 + deskConfig.deskDepth/2]}>
+           <DeskModel config={deskConfig} />
+         </group>
+
+         {/* Placed Objects */}
+         {deskConfig.placedObjects.map(obj => (
+           <DecorativeObject 
+             key={obj.id} 
+             obj={obj} 
+             isSelected={selectedId === obj.id}
+             onSelect={() => setSelectedId(obj.id)}
+             onTransform={(p, r) => updateObject(obj.id, p, r)}
+           />
+         ))}
+
+      </group>
+
+      <ContactShadows position={[0, -0.4, 0]} opacity={0.6} scale={200} blur={2} far={4} color="#000000" />
+      
+      <OrbitControls makeDefault enableDamping minPolarAngle={0} maxPolarAngle={Math.PI / 1.9} />
+    </>
+  );
+};
+
+
+const DesignCanvas: React.FC<DesignCanvasProps> = ({ deskConfig, setDeskConfig }) => {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  return (
     <div className="w-full h-full relative bg-gray-900 overflow-hidden" onClick={() => setSelectedId(null)}>
       <Canvas shadows camera={{ position: [0, 60, 120], fov: 45 }} className="z-10">
-        <Suspense fallback={null}>
-          {/* Lighting & Environment */}
-          <Environment preset="apartment" background={false} blur={0.6} />
-          
-          <ambientLight intensity={0.4} />
-          <pointLight position={[0, room.height - 20, 20]} intensity={0.5} castShadow />
-          <directionalLight 
-            position={[50, 50, 50]} 
-            intensity={0.6} 
-            castShadow 
-            shadow-mapSize={[2048, 2048]} 
-            shadow-bias={-0.0001}
-          />
-          
-          {/* Room Shell */}
-          <group position={[0, -room.height/2 + 20, 0]}> 
-             <Floor room={room} />
-             
-             {/* Back Wall */}
-             <Box args={[room.width, room.height, 1]} position={[0, room.height/2, -room.depth/2]} receiveShadow castShadow>
-                <meshStandardMaterial color={room.wallColor} />
-             </Box>
-
-             {/* Side Walls (Visual Only) */}
-             {room.sideWalls[0] && (
-               <Box args={[1, room.height, room.depth]} position={[-room.width/2, room.height/2, 0]} receiveShadow>
-                  <meshStandardMaterial color={room.wallColor} />
-               </Box>
-             )}
-             
-             {room.sideWalls[1] && (
-               <Box args={[1, room.height, room.depth]} position={[room.width/2, room.height/2, 0]} receiveShadow>
-                  <meshStandardMaterial color={room.wallColor} />
-               </Box>
-             )}
-             
-             {/* Ceiling Hint */}
-             <Box args={[room.width, 1, room.depth]} position={[0, room.height, 0]}>
-                <meshStandardMaterial color="#fff" opacity={0.1} transparent />
-             </Box>
-
-             {/* The Desk */}
-             <group position={[0, 0, -room.depth/2 + deskConfig.deskDepth/2]}>
-               <DeskModel config={deskConfig} />
-             </group>
-
-             {/* Placed Objects */}
-             {deskConfig.placedObjects.map(obj => (
-               <DecorativeObject 
-                 key={obj.id} 
-                 obj={obj} 
-                 isSelected={selectedId === obj.id}
-                 onSelect={() => setSelectedId(obj.id)}
-                 onTransform={(p, r) => updateObject(obj.id, p, r)}
-               />
-             ))}
-
-          </group>
-
-          <ContactShadows position={[0, -0.4, 0]} opacity={0.6} scale={200} blur={2} far={4} color="#000000" />
-          
-          <OrbitControls makeDefault enableDamping minPolarAngle={0} maxPolarAngle={Math.PI / 1.9} />
-        </Suspense>
+        <ErrorBoundary fallback={<group><Box args={[10,10,10]}><meshStandardMaterial color="red" /></Box></group>}>
+           <Suspense fallback={null}>
+              <SceneContent 
+                deskConfig={deskConfig} 
+                setDeskConfig={setDeskConfig} 
+                selectedId={selectedId}
+                setSelectedId={setSelectedId}
+              />
+           </Suspense>
+        </ErrorBoundary>
       </Canvas>
     </div>
   );
